@@ -8,17 +8,21 @@ import cookieParser from "cookie-parser"
 const app = express()
 
 app.use(cors({
-  origin: "*", 
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
 }));
 app.use(express.json())
 app.use(cookieParser())
 
 app.post("/api/signup", async (req, res) => {
     try {
-        const { name, email, password } = await req.body()
+        const { name, email, password } = req.body
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "All fields are required" })
+        }
 
         const existingUser = await prisma.user.findUnique({ where: { email } })
         if (existingUser) {
@@ -32,14 +36,14 @@ app.post("/api/signup", async (req, res) => {
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "1h" })
         res.cookie("authToken", token, {
             httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production"
+            sameSite: "none",
+            secure: true
         })
 
         res.status(201).json({ message: "Sign Up Successful", user })
 
     } catch (err) {
-console.log("Error:",err)
+        console.log("Error:", err)
         res.status(500).json({ error: "Internal Server Error" });
     }
 
@@ -51,7 +55,7 @@ app.post("/api/login", async (req, res) => {
 
 
     try {
-        const { email, password } = await req.body
+        const { email, password } = req.body
         if (!email || !password) {
             return res.status(401).json({ message: "Please input required fields" })
         }
@@ -67,13 +71,13 @@ app.post("/api/login", async (req, res) => {
         const token = jwt.sign({ userId: existingUser.id }, process.env.JWT_SECRET, { expiresIn: "1h" })
         res.cookie("authToken", token, {
             httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production"
+            sameSite: "none",
+            secure: true
         })
 
-       res.status(201).json({message:"Logged in succesfully"})
+        res.status(201).json({ message: "Logged in succesfully" })
     } catch (error) {
-       res.status(500).json({ error: "Internal Server Error" })
+        res.status(500).json({ error: "Internal Server Error" })
     }
 })
 
