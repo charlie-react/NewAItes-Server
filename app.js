@@ -40,7 +40,13 @@ app.post("/api/signup", async (req, res) => {
             secure: true
         })
 
-        res.status(201).json({ message: "Sign Up Successful", user })
+        res.status(201).json({
+            message: "Sign Up Successful", user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            },
+        })
 
     } catch (err) {
         console.log("Error:", err)
@@ -75,7 +81,13 @@ app.post("/api/login", async (req, res) => {
             secure: true
         })
 
-        res.status(201).json({ message: "Logged in succesfully" })
+        res.status(201).json({
+            message: "Logged in succesfully", user: {
+                id: existingUser.id,
+                name: existingUser.name,
+                email: existingUser.email
+            },
+        })
     } catch (error) {
         res.status(500).json({ error: "Internal Server Error" })
     }
