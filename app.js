@@ -2,7 +2,7 @@ import express from "express"
 import cors from "cors"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
-import prisma from "../prismaClient.js"
+import prisma from "./prismaClient.js"
 import cookieParser from "cookie-parser"
 
 const app = express()
@@ -72,5 +72,6 @@ app.post("/api/login", async (req, res) => {
     }
 })
 
-app.listen(5000, () => console.log("Server running on port 5000"))
+const PORT = process.env.PORT || 5000
+app.listen(PORT, () => console.log("Server running on port 5000"))
 
