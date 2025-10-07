@@ -38,8 +38,8 @@ app.post("/api/signup", async (req, res) => {
 
         res.status(201).json({ message: "Sign Up Successful", user })
 
-    } catch (error) {
-
+    } catch (err) {
+console.log("Error:",err)
         res.status(500).json({ error: "Internal Server Error" });
     }
 
@@ -53,7 +53,7 @@ app.post("/api/login", async (req, res) => {
     try {
         const { email, password } = await req.body
         if (!email || !password) {
-            return res.status(401).json({ message: "Please into required fields" })
+            return res.status(401).json({ message: "Please input required fields" })
         }
         const existingUser = await prisma.user.findUnique({ where: { email } })
         if (!existingUser) {
