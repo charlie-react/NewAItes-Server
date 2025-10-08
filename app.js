@@ -8,7 +8,7 @@ import cookieParser from "cookie-parser"
 const app = express()
 
 app.use(cors({
-    origin: "*",
+    origin: "http://localhost:3000",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
@@ -92,7 +92,16 @@ app.post("/api/login", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" })
     }
 })
-
+app.get("/api/logout", async (req,res)=>{
+res.cookie("authToken","",{
+    httpOnly:true,
+    expires: new Date(0),
+        secure: true,
+    sameSite: "none",
+    path:"/"
+})
+res.status(200).json({ message: "Logged out successfully" });
+})
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log("Server running on port 5000"))
 
