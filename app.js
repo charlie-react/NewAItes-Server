@@ -102,6 +102,16 @@ res.cookie("authToken","",{
 })
 res.status(200).json({ message: "Logged out successfully" });
 })
+
+app.get("/api/products", async (req, res) => {
+  try {
+    const allProducts = await prisma.product.findMany();
+    res.status(200).json({ data: allProducts });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log("Server running on port 5000"))
 
