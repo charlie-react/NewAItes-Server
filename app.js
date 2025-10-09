@@ -92,26 +92,41 @@ app.post("/api/login", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" })
     }
 })
-app.get("/api/logout", async (req,res)=>{
-res.cookie("authToken","",{
-    httpOnly:true,
-    expires: new Date(0),
+app.get("/api/logout", async (req, res) => {
+    res.cookie("authToken", "", {
+        httpOnly: true,
+        expires: new Date(0),
         secure: true,
-    sameSite: "none",
-    path:"/"
-})
-res.status(200).json({ message: "Logged out successfully" });
+        sameSite: "none",
+        path: "/"
+    })
+    res.status(200).json({ message: "Logged out successfully" });
 })
 
 app.get("/api/products", async (req, res) => {
-  try {
-    const allProducts = await prisma.product.findMany();
-    res.status(200).json({ data: allProducts });
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
+    try {
+        const allProducts = await prisma.product.findMany();
+        res.status(200).json({ data: allProducts });
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
+
+app.get("/api/products/:id", async (req, res) => {
+    const { id } = req.params
+    try {
+        const product = await prisma.product.findUnique({ where: { id: parseInt(id) } })
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        res.status(200).json({ data: product });
+    } catch (error) {
+        console.error("Error fetching product:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+})
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log("Server running on port 5000"))
 
