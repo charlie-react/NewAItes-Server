@@ -27,6 +27,8 @@ model User{
 model Product{
   id Int @id@default(autoincrement())
   name String
+  description String
+  detailed String
   feature1 String
   feature2 String
   feature3 String
