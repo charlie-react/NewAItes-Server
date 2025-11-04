@@ -14,7 +14,7 @@ const app = express()
 
 app.use(cors({
     origin:[ 
-        "https://new-a-ites.vercel.app/",
+        "https://new-a-ites.vercel.app",
         "http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
