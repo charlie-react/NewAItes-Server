@@ -11,7 +11,7 @@ async function main() {
             feature1: "Natural language conversations",
             feature2: "Supports multiple languages",
             feature3: "Context awareness across sessions",
-            price: 200,
+            price: 200000,
         },
         {
             name: "AI Image Generator",
@@ -22,7 +22,7 @@ async function main() {
             feature1: "Generate high-res images from text prompts",
             feature2: "Multiple styles and filters",
             feature3: "Custom aspect ratio support",
-            price: 250,
+            price: 250000,
         },
         {
             name: "AI Voice Cloner",
@@ -33,7 +33,7 @@ async function main() {
             feature1: "Clone voice from short sample",
             feature2: "Adjust tone and emotion",
             feature3: "Multi-lingual speech output",
-            price: 200,
+            price: 200000,
         },
         {
             name: "AI Music Composer",
@@ -44,7 +44,7 @@ async function main() {
             feature1: "Generate melodies and harmonies",
             feature2: "Multiple genres and moods",
             feature3: "Export in MIDI, MP3 formats",
-            price: 100,
+            price: 100000,
         },
         {
             name: "AI Video Creator",
@@ -56,7 +56,7 @@ async function main() {
             feature1: "Generate short AI video clips",
             feature2: "Text-to-video transformation",
             feature3: "Add music and transitions",
-            price: 500,
+            price: 500000,
         },
         {
             name: "AI Writing Assistant",
@@ -67,7 +67,7 @@ async function main() {
             feature1: "Rewrite or expand text",
             feature2: "Grammar and style suggestions",
             feature3: "Summarization and paraphrasing",
-            price: 120,
+            price: 120000,
         },
     ]
 

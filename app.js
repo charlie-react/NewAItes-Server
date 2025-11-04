@@ -4,11 +4,18 @@ import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 import prisma from "./prismaClient.js"
 import cookieParser from "cookie-parser"
+import axios from "axios"
+import nodemailer from "nodemailer"
+import PDFDocument from "pdfkit"
+import path from "path"
+import fs from "fs"
 
 const app = express()
 
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin:[ 
+        "https://new-a-ites.vercel.app/",
+        "http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
@@ -103,6 +110,40 @@ app.get("/api/logout", async (req, res) => {
     res.status(200).json({ message: "Logged out successfully" });
 })
 
+// Contact me
+
+app.post("/api/contact", async (req, res) => {
+    try {
+        const { email, name, message } = req.body
+        if (!name || !email || !message) {
+            res.status(400).json({ error: "Missing input fields" })
+        }
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        })
+
+        const mailOptions = {
+            from: email,
+            to: process.env.EMAIL_USER,
+            subject: `A new contact form from ${name}`,
+            text: message
+        }
+
+        await transporter.sendMail(mailOptions)
+
+        res.status(200).json({ message: "Message sent successfully" })
+
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" })
+    }
+
+
+})
+
 app.get("/api/products", async (req, res) => {
     try {
         const allProducts = await prisma.product.findMany();
@@ -127,6 +168,164 @@ app.get("/api/products/:id", async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 })
+
+// Payment
+
+app.post("/api/pay", async (req, res) => {
+   
+    try {
+        const { email, amount, userId, productId } = req.body
+
+        const paystackAmount = amount * 100
+
+        const response = await axios.post(
+            "https://api.paystack.co/transaction/initialize", {
+            email,
+            amount: paystackAmount,
+            callback_url: `${process.env.CLIENT_URL}/verify-payment`,
+            metadata: { userId, productId, amount: paystackAmount },
+        }, {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+                "Content-Type": "application/json"
+            }
+        }
+        )
+        res.status(200).json(response.data)
+    } catch (error) {
+        console.error("Paystack init error:", error.response?.data || error.message);
+        res.status(500).json({ error: "Payment initialization failed" });
+    }
+})
+
+app.get("/api/verify/:reference", async (req, res) => {
+    console.log("💳 /api/verify HIT:", req.body);
+    try {
+        const { reference } = req.params
+
+        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+            }
+        })
+
+        const data = response.data.data
+        if (data.status === "success") {
+            const { userId, productId, amount } = data.metadata
+
+            await prisma.purchase.create({
+                data: {
+                    userId: parseInt(userId),
+                    productId: parseInt(productId),
+                    reference,
+                    status: "success",
+                    amount: amount / 100
+                }
+            })
+
+            return res.status(200).json({ success: true, message: "Payment verified and saved" });
+        } else {
+            return res.status(400).json({ success: false, message: "Payment not successful" });
+        }
+
+    } catch (error) {
+        console.error("Verification error:", error.response?.data || error.message);
+    }
+})
+
+
+/*Get Purchases*/
+app.get('/api/purchases/:userId', async (req, res) => {
+    const { userId } = req.params
+    try {
+        const purchases = await prisma.purchase.findMany({
+            where: { userId: parseInt(userId) },
+            include: { product: true },
+            orderBy: { createdAt: "desc" }
+        })
+        res.status(200).json({ data: purchases })
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// receipt
+
+app.get("/api/receipt/:reference", async (req, res) => {
+    const { reference } = req.params
+
+    console.log("this is:", reference, typeof reference)
+    try {
+        const purchase = await prisma.purchase.findUnique({ where: { reference }, include: { user: true, product: true } })
+        console.log(purchase)
+        if (!purchase) {
+            res.status(400).json({ message: "Purchase not found" })
+        }
+        res.status(200).json({ data: purchase })
+    } catch (error) {
+        res.status(500).json({ error: "internal server error nooo" })
+    }
+})
+
+// pdf receipt
+
+app.get('/api/receipt/:reference/pdf', async (req, res) => {
+
+    const { reference } = req.params
+
+    try {
+        const purchase = await prisma.purchase.findUnique({
+            where: { reference },
+            include: { user: true, product: true },
+        });
+
+        if (!purchase) {
+            return res.status(404).json({ message: "Purchase not found" });
+        }
+        const doc = new PDFDocument()
+        const filePath = path.join("receipts", `receipt-${reference}.pdf`)
+        if (!fs.existsSync("receipts")) fs.mkdirSync("receipts");
+        const stream = fs.createWriteStream(filePath);
+        doc.pipe(stream);
+
+        doc.fontSize(22).text("Payment Receipt", { align: "center" });
+        doc.moveDown();
+        doc.fontSize(14).text(`Reference: ${reference}`);
+        doc.text(`Date: ${new Date(purchase.createdAt).toLocaleString()}`);
+        doc.moveDown();
+
+        doc.fontSize(16).text("Product Details", { underline: true });
+        doc.text(`Product Name: ${purchase.product.name}`);
+        doc.text(`Description: ${purchase.product.description}`);
+        doc.text(`Price: ${purchase.product.price.toLocaleString()}Naira`);
+        doc.moveDown();
+
+        doc.fontSize(16).text("Customer", { underline: true });
+        doc.text(`Name: ${purchase.user.name}`);
+        doc.text(`Email: ${purchase.user.email}`);
+        doc.moveDown();
+
+        doc.fontSize(16).text("Payment Summary", { underline: true });
+        doc.text(`Amount Paid: ${purchase.amount.toLocaleString()} Naira`);
+        doc.text(`Status: ${purchase.status}`);
+        doc.moveDown();
+
+        doc.fontSize(14).text("Thank you for your purchase!", {
+            align: "center",
+        });
+
+        doc.end();
+
+        stream.on("finish", () => {
+            res.download(filePath);
+        });
+
+    } catch (error) {
+        console.error("PDF Generation Error:", error.message);
+        res.status(500).json({ error: "Failed to generate receipt PDF" });
+    }
+})
+
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log("Server running on port 5000"))
 
