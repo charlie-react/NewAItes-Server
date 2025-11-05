@@ -13,7 +13,7 @@ import fs from "fs"
 const app = express()
 
 app.use(cors({
-    origin:[ 
+    origin: [
         "https://new-a-ites.vercel.app",
         "http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -30,7 +30,13 @@ app.post("/api/signup", async (req, res) => {
         if (!name || !email || !password) {
             return res.status(400).json({ message: "All fields are required" })
         }
-
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                message:
+                    "Password must be at least 8 characters long, include a number, an uppercase and lowercase letter.",
+            });
+        }
         const existingUser = await prisma.user.findUnique({ where: { email } })
         if (existingUser) {
             return res.status(400).json({ message: "User already exists" })
@@ -99,6 +105,41 @@ app.post("/api/login", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" })
     }
 })
+
+
+
+app.post("/api/user/change-password", async (req, res) => {
+    try {
+        const { userId, oldPassword, newPassword } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const valid = await bcrypt.compare(oldPassword, user.password);
+        if (!valid) return res.status(400).json({ message: "Old password is incorrect" });
+
+        // ✅ Validate new password format
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            return res.status(400).json({
+                message:
+                    "Password must be at least 8 characters long, include a number, an uppercase and lowercase letter.",
+            });
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { password: hashed },
+        });
+
+        res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
 app.get("/api/logout", async (req, res) => {
     res.cookie("authToken", "", {
         httpOnly: true,
@@ -169,10 +210,27 @@ app.get("/api/products/:id", async (req, res) => {
     }
 })
 
+// fetch User info
+
+app.get("/api/user/:id", async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const user = await prisma.user.findUnique({ where: { id: parseInt(id) }, include: { purchases: { orderBy: { createdAt: "desc" } } } })
+
+        if (!user) {
+            return res.status(400).json({ message: "User not found!" })
+        }
+        res.status(200).json({ data: user })
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+})
+
 // Payment
 
 app.post("/api/pay", async (req, res) => {
-   
+
     try {
         const { email, amount, userId, productId } = req.body
 
@@ -194,7 +252,7 @@ app.post("/api/pay", async (req, res) => {
         res.status(200).json(response.data)
     } catch (error) {
         console.error("Paystack init error:", error.response?.data || error.message);
-        res.status(500).json({ error: "Payment initialization failed" });
+        res.status(500).json({ error: "Internal Server Error" });
     }
 })
 
