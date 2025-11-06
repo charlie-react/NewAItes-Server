@@ -9,6 +9,7 @@ import nodemailer from "nodemailer"
 import PDFDocument from "pdfkit"
 import path from "path"
 import fs from "fs"
+import { verifyToken } from "./middleware/auth.js"
 
 const app = express()
 
@@ -54,7 +55,7 @@ app.post("/api/signup", async (req, res) => {
         })
 
         res.status(201).json({
-            message: "Sign Up Successful", user: {
+            message: "Sign Up Successful",token, user: {
                 id: user.id,
                 name: user.name,
                 email: user.email
@@ -95,7 +96,7 @@ app.post("/api/login", async (req, res) => {
         })
 
         res.status(201).json({
-            message: "Logged in succesfully", user: {
+            message: "Logged in succesfully", token, user: {
                 id: existingUser.id,
                 name: existingUser.name,
                 email: existingUser.email
@@ -105,6 +106,16 @@ app.post("/api/login", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" })
     }
 })
+
+app.get("/api/dashboard", verifyToken, async (req, res) => {
+  const userId = req.user.id; 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { purchases: true },
+  });
+
+  res.json({ message: "Welcome to your dashboard", user });
+});
 
 
 
